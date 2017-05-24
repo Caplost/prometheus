@@ -386,6 +386,7 @@ Prometheus.Graph.prototype.submitQuery = function() {
     url = PATH_PREFIX + "/api/v1/query";
     success = function(json, textStatus) { self.handleConsoleResponse(json, textStatus); };
   }
+  self.params = params;
 
   self.queryXhr = $.ajax({
       method: self.queryForm.attr("method"),
@@ -518,7 +519,6 @@ Prometheus.Graph.prototype.transformData = function(json) {
       color: palette.color()
     };
   });
-  Rickshaw.Series.zeroFill(data);
   return data;
 };
 
@@ -541,6 +541,18 @@ Prometheus.Graph.prototype.updateGraph = function() {
   var duration = self.parseDuration(self.rangeInput.val()) || 3600; // 1h default.
   var startTime = endTime - duration;
   self.data.forEach(function(s) {
+    // Insert nulls for all missing steps.
+    var newSeries = [];
+    var pos = 0;
+    for (var t = self.params.start; t <= self.params.end; t += self.params.step) {
+      if (s.data.length > pos && s.data[pos].x === t) {
+        newSeries.push(s.data[pos]);
+        pos++;
+      } else {
+        newSeries.push({x: t, y: null});
+      }
+    }
+    s.data = newSeries;
     // Padding series with invisible "null" values at the configured x-axis boundaries ensures
     // that graphs are displayed with a fixed x-axis range instead of snapping to the available
     // time range in the data.
